@@ -1,0 +1,9 @@
+# 简单规则：检测单用户在 sliding_window_seconds 内 failed login 次数超过 threshold
+rules:
+  - id: failed_login_threshold
+    description: "单用户短时间内重复登录失败"
+    pattern: "failed login"
+    field: "message"
+    threshold: 3
+    sliding_window_seconds: 60
+    per_key: "user"   # 按哪个字段聚合（示例假设 message 中包含 user=xxx）

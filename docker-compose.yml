@@ -1,0 +1,52 @@
+version: "3.8"
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.9.0
+    environment:
+      - discovery.type=single-node
+      - "plugins.security.disabled=true"
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.2.3
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./logs:/var/log
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  log-generator:
+    build: ./log-generator
+    volumes:
+      - ./logs:/var/log
+    depends_on:
+      - fluent-bit
+
+  audit-agent:
+    build: ./audit-agent
+    environment:
+      OPENSEARCH_HOST: "http://opensearch:9200"
+      OPENSEARCH_USER: "admin"
+      OPENSEARCH_PASSWORD: "admin"
+      POLL_INTERVAL: "15"
+    depends_on:
+      - opensearch
+    volumes:
+      - ./audit-agent:/app
+
+volumes:
+  opensearch-data:
